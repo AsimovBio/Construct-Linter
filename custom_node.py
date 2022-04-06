@@ -1,5 +1,4 @@
-from anytree import AnyNode, Node, NodeMixin
-
+from anytree import NodeMixin
 
 class PromoterNode(NodeMixin):
     """Class that represents promoters in an Abstract Syntax Tree."""

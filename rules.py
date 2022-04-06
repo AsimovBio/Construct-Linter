@@ -1,10 +1,10 @@
+from collections import defaultdict
+
 from anytree import findall
 from anytree import PreOrderIter, LevelOrderIter
 from anytree import Walker
 
-from collections import defaultdict
 from tree_helper import flatten
-
 
 class BaseChecker(object):
     def __init__(self):
