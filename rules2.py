@@ -1,4 +1,5 @@
-from anytree import NodeMixin
+class ReadError(Exception):
+    pass
 
 class Cursor(object):
     def __init__(self, items, index=0):
@@ -14,8 +15,8 @@ class Cursor(object):
     def rewind(self, index=0):
         self.index = index
 
-    def has_more(self):
-        return self.index < len(self.items)
+    def at_end(self):
+        return self.index == len(self.items)
 
 class Base(object):
     pass
@@ -28,19 +29,19 @@ class Unit(Base):
         unit_name = self.__class__.__name__
         cur = input.current()
         if cur['node_type'] != unit_name:
-            raise AssertionError(
-                f"expected input to be {unit_name} but was {cur['node_type']}"
+            raise ReadError(
+                f"expected {unit_name} but got {cur['node_type']}"
             )
         input.next()
 
         if self.children:
             cursor = Cursor(cur['children'])
             for child in self.children:
-                if not cursor.has_more():
-                    raise AssertionError("ran out of input")
+                if cursor.at_end():
+                    raise ReadError("ran out of input")
                 child.read(cursor)
-            if cursor.has_more():
-                raise AssertionError("did not consume all input")
+            if not cursor.at_end():
+                raise ReadError("did not consume all input")
 
 class Construct(Unit):
     pass
@@ -74,9 +75,10 @@ class AnyOf(Base):
                 input.rewind(index)
                 child.read(input)
                 return
-            except:
+            except ReadError as err:
                 pass
-        raise AssertionError("could not match input against AnyOf set")
+        names = [c.__class__.__name__ for c in self.children]
+        raise ReadError(f"could not match input against ({names})")
 
 class AtLeast(Base):
     def __init__(self, minimum, child):
@@ -85,14 +87,16 @@ class AtLeast(Base):
 
     def read(self, input):
         count = 0
-        while input.has_more():
+        while not input.at_end():
             try:
                 self.child.read(input)
                 count += 1
-            except:
+            except ReadError as err:
                 break
         if count < self.minimum:
-            raise AssertionError(f"could not match {self.minimum} input(s)")
+            raise ReadError(
+                f"only matched {count} input(s) but needed {self.minimum}"
+            )
 
 graph = Construct([
     AtLeast(1, TranscriptionUnit([
